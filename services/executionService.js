@@ -6,21 +6,49 @@ export const executePlan = async ({ orgId, tenantId, question, plan }) => {
 
   for (const step of plan) {
     if (step.type === 'FIND') {
-        const found = findChunks(orgId, tenantId, step.params.query);
+      const { query, service_name, region, doc_types } = step.params || {};
+
+      // ✅ Fallback: if plan didn't set query, use user question
+      let q = query && query.trim ? query.trim() : "";
+      if (!q && question) {
+        q = question.toString().trim();
+      }
+
+      // If still empty, don't even call Pinecone
+      if (!q) {
+        console.warn("FIND step: empty query, returning []");
+        stepResults[step.id] = [];
+        continue;
+      }
+
+      const found = await findChunks(orgId, tenantId, q, {
+        service_name,
+        region,
+        doc_types,
+        topK: 6,
+      });
+
       stepResults[step.id] = found;
 
     } else if (step.type === 'FILTER') {
-      const inputChunks = stepResults[step.inputs[0]] || [];
-      const filtered = filterChunks(inputChunks, step.params);
-      stepResults[step.id] = filtered;
+      const prev = stepResults[step.inputs[0]] || [];
+      const inputChunks = Array.isArray(prev) ? prev : [];
+
+      const filteredList = filterChunks(inputChunks, step.params || {});
+      // (optional) if you still want to keep only one best chunk:
+      // const topOne = filteredList.length ? [filteredList[0]] : [];
+      // stepResults[step.id] = topOne;
+      stepResults[step.id] = filteredList;
 
     } else if (step.type === 'JOIN') {
-      const inputChunks = stepResults[step.inputs[0]] || [];
+      const prev = stepResults[step.inputs[0]] || [];
+      const inputChunks = Array.isArray(prev) ? prev : [];
+
       const bundle = joinChunksIntoFacts(inputChunks);
       stepResults[step.id] = bundle;
 
     } else if (step.type === 'VERIFY') {
-      const inputBundle = stepResults[step.inputs[0]];
+      const inputBundle = stepResults[step.inputs[0]] || {};
       const verified = verifyFacts(inputBundle);
       stepResults[step.id] = verified;
     }
@@ -59,13 +87,11 @@ const joinChunksIntoFacts = (chunks) => {
   return result;
 };
 
-// Very simple "verification" for hack
 const verifyFacts = (bundle) => {
   return {
     runbooks: bundle?.runbooks || [],
     incidents: bundle?.incidents || [],
     slos: bundle?.slos || [],
     architecture: bundle?.architecture || [],
-    // could add simple heuristics here
   };
 };

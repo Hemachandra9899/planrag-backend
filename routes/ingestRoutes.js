@@ -1,9 +1,9 @@
 // src/routes/ingestRoutes.js
-import { Router } from 'express';
-import { ingestDocuments } from '../controllers/ingestController.js';
+import express from "express";
+import { ingestDocuments } from "../controllers/ingestController.js";
 
-const router = Router();
+const router = express.Router();
 
-router.post('/', ingestDocuments);
+router.post("/", ingestDocuments);
 
 export default router;
