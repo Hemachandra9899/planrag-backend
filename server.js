@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 // ✅ CORS middleware – this is enough
 app.use(
     cors({
-      origin: ["http://localhost:5174", "http://localhost:5175"],
+      origin: ["http://localhost:5174", "http://localhost:5175","https://hackathon1-main.vercel.app"],
       methods: ["GET", "POST", "OPTIONS"],
       allowedHeaders: ["Content-Type", "x-api-key"],
     })
